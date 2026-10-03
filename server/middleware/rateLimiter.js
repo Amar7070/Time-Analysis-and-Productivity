@@ -1,9 +1,12 @@
 import rateLimit from "express-rate-limit";
 
+// Helper to disable rate limits during tests
+const isTest = process.env.NODE_ENV === "test";
+
 // Limit repeated auth requests (login, signup, password resets)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs for auth routes
+  max: isTest ? 1000 : 10, // Limit each IP to 10 requests per windowMs for auth routes
   message: {
     success: false,
     message: "Too many authentication attempts from this IP, please try again after 15 minutes.",
@@ -15,7 +18,7 @@ export const authLimiter = rateLimit({
 // A slightly stricter limiter for password reset specifically
 export const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 requests per hour
+  max: isTest ? 1000 : 5, // Limit each IP to 5 requests per hour
   message: {
     success: false,
     message: "Too many password reset attempts, please try again after an hour.",

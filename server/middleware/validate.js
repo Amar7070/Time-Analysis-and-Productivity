@@ -10,11 +10,12 @@ const validate = (schema) => async (req, res, next) => {
     return next();
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const formattedErrors = error.errors.map((err) => ({
+      const issues = error.errors || error.issues;
+      const formattedErrors = issues.map((err) => ({
         field: err.path.join("."),
         message: err.message,
       }));
-      return res.status(422).json({
+      return res.status(400).json({
         success: false,
         message: "Validation Error",
         errors: formattedErrors,

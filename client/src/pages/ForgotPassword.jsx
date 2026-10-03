@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiMail, FiLock, FiKey } from "react-icons/fi";
 import { toast } from "react-toastify";
-import emailjs from "@emailjs/browser";
 import Galaxy from "./Galaxy";
 
 const ForgotPassword = () => {

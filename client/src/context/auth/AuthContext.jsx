@@ -14,15 +14,9 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const fetchUser = async () => {
-    // Debug: Trace fetchUser
-    console.log("AuthContext: fetchUser called");
     setLoading(true); // Ensure loading state reflects refresh
     try {
       const token = localStorage.getItem("token");
-      console.log(
-        "AuthContext: Token from storage:",
-        token ? "Exists" : "Null"
-      );
       if (!token) {
         setLoading(false);
         setUser(null);
@@ -38,9 +32,7 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      console.log("AuthContext: fetchUser response status:", res.status);
       if (res.status === 200) {
-        console.log("AuthContext: fetchUser success", res.data.data);
         setUser(res.data.data);
         setError(null);
       }
@@ -61,12 +53,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (token, userData = null) => {
-    console.log(
-      "AuthContext: Login called with token:",
-      token ? "Yes" : "No",
-      "UserData:",
-      userData ? "Yes" : "No"
-    );
     localStorage.setItem("token", token);
 
     if (userData) {
@@ -78,7 +64,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log("AuthContext: Logout called");
     localStorage.clear(); // Clear all data as requested
     setUser(null);
   };

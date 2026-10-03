@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import generateToken from "../utils/generateToken.js";
-import admin from "../config/firebaseAdmin.js";
+import { adminAuth } from "../config/firebaseAdmin.js";
 
 export const registerUser = async (userData) => {
   const { firstName, lastName, email, password } = userData;
@@ -43,7 +43,7 @@ export const loginUser = async (email, password) => {
 export const googleAuthUser = async (idToken) => {
   let decodedToken;
   try {
-    decodedToken = await admin.auth().verifyIdToken(idToken);
+    decodedToken = await adminAuth.verifyIdToken(idToken);
   } catch (verifyError) {
     const error = new Error("Invalid or expired Firebase token.");
     error.status = 401;

@@ -5,7 +5,6 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["./tests/setup.js"],
-    fileParallelism: false, // Prevent DB connection clashes
     testTimeout: 20000,
     coverage: {
       provider: "v8",

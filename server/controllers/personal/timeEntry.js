@@ -164,10 +164,8 @@ export const stopTimeEntry = async (req, res) => {
     }
 
     // Update the time entry
-    const updateData = {
-      endTimestamp: endTimestamp || new Date(),
-      entryStatus: "completed",
-    };
+    timeEntry.endTimestamp = endTimestamp ? new Date(endTimestamp) : new Date();
+    timeEntry.entryStatus = "completed";
 
     // Update focus score if provided
     if (focusScore !== undefined) {
@@ -178,19 +176,16 @@ export const stopTimeEntry = async (req, res) => {
           message: "Focus score must be between 1 and 5",
         });
       }
-      updateData.focusScore = Math.round(focusScore);
+      timeEntry.focusScore = Math.round(focusScore);
     }
 
     // Update notes if provided
     if (additionalNotes !== undefined) {
-      updateData.additionalNotes = String(additionalNotes).substring(0, 500);
+      timeEntry.additionalNotes = String(additionalNotes).substring(0, 500);
     }
 
-    const updatedEntry = await TimeEntry.findByIdAndUpdate(
-      entryId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    await timeEntry.save();
+    const updatedEntry = timeEntry;
 
     // Calculate net productive time
     const netProductiveTime = updatedEntry.getNetProductiveTime();
