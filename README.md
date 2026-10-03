@@ -28,7 +28,6 @@ The application helps individuals and teams understand how they spend their time
 * [Screenshots](#screenshots)
 * [Future Improvements](#future-improvements)
 * [Known Limitations](#known-limitations)
-* [Interview Explanation](#interview-explanation)
 * [Important Engineering Decisions](#important-engineering-decisions)
 
 ---
