@@ -1,0 +1,473 @@
+import UserTask from "../../modal/personalAnalysis/UserTask.js";
+import TimeEntry from "../../modal/personalAnalysis/TimeEntry.js";
+import ProductivityGoal from "../../modal/personalAnalysis/ProductivityGoal.js";
+import mongoose from "mongoose";
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { timeRange } = req.query;
+
+    let startDate = new Date();
+    let endDate = new Date();
+    let previousStartDate = new Date();
+    let previousEndDate = new Date(); // To calculate previous period for comparison
+
+    // Determine date range for Dashboard Filters
+    if (timeRange === "Today") {
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      // Previous period = Yesterday
+      previousStartDate.setDate(startDate.getDate() - 1);
+      previousStartDate.setHours(0, 0, 0, 0);
+      previousEndDate.setDate(endDate.getDate() - 1);
+      previousEndDate.setHours(23, 59, 59, 999);
+    } else if (timeRange === "This Week") {
+      const day = startDate.getDay();
+      const diff = startDate.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+      startDate.setDate(diff);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Previous period = Last Week
+      previousStartDate = new Date(startDate);
+      previousStartDate.setDate(startDate.getDate() - 7);
+      previousEndDate = new Date(startDate);
+      previousEndDate.setDate(startDate.getDate() - 1);
+      previousEndDate.setHours(23, 59, 59, 999);
+    } else if (timeRange === "This Month") {
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      // Previous period = Last Month
+      previousStartDate = new Date(startDate);
+      previousStartDate.setMonth(startDate.getMonth() - 1);
+      previousEndDate = new Date(startDate);
+      previousEndDate.setDate(0); // Last day of previous month
+      previousEndDate.setHours(23, 59, 59, 999);
+    } else if (timeRange === "custom") {
+      const { startDate: qStart, endDate: qEnd } = req.query;
+      if (!qStart || !qEnd) {
+        return res.status(400).json({
+          message: "Start date and end date are required for custom range",
+        });
+      }
+      startDate = new Date(qStart);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(qEnd);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Calculate duration in milliseconds
+      const duration = endDate.getTime() - startDate.getTime();
+
+      // Previous period = Same duration ending before start date
+      previousEndDate = new Date(startDate);
+      previousEndDate.setDate(previousEndDate.getDate() - 1);
+      previousEndDate.setHours(23, 59, 59, 999);
+
+      previousStartDate = new Date(previousEndDate.getTime() - duration);
+      previousStartDate.setHours(0, 0, 0, 0);
+    } else {
+      // Default to This Week
+      const day = startDate.getDay();
+      const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+      startDate.setDate(diff);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      previousStartDate = new Date(startDate);
+      previousStartDate.setDate(startDate.getDate() - 7);
+      previousEndDate = new Date(startDate);
+      previousEndDate.setDate(startDate.getDate() - 1);
+      previousEndDate.setHours(23, 59, 59, 999);
+    }
+
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+
+    // --- Common Colors ---
+    const categoryColors = {
+      academic_studies: "#4F46E5",
+      assignment_work: "#8B5CF6",
+      project_development: "#059669",
+      exam_preparation: "#F59E0B",
+      research_work: "#EF4444",
+      skill_learning: "#EC4899",
+      personal_development: "#06B6D4",
+      health_fitness: "#10B981",
+      social_activities: "#F97316",
+      administrative: "#6B7280",
+      other: "#9CA3AF",
+    };
+
+    // 1. Total Tracked Time
+    const totalTimeAgg = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalMinutes: { $sum: "$durationInMinutes" },
+        },
+      },
+    ]);
+    const totalMinutes = totalTimeAgg[0]?.totalMinutes || 0;
+    const totalHours = (totalMinutes / 60).toFixed(1);
+
+    // Previous Total Time for Trend
+    const prevTotalTimeAgg = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: previousStartDate, $lte: previousEndDate },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalMinutes: { $sum: "$durationInMinutes" },
+        },
+      },
+    ]);
+    const prevTotalMinutes = prevTotalTimeAgg[0]?.totalMinutes || 0;
+    const totalTimeTrend = prevTotalMinutes
+      ? (((totalMinutes - prevTotalMinutes) / prevTotalMinutes) * 100).toFixed(
+          1
+        )
+      : totalMinutes > 0
+      ? "100.0"
+      : "0.0";
+
+    // 2. Productivity Score (Avg Focus Score 1-5 mapped to 0-100)
+    const productivityAgg = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: startDate, $lte: endDate },
+          focusScore: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgFocus: { $avg: "$focusScore" },
+          docCount: { $sum: 1 }, // To check if we have data
+        },
+      },
+    ]);
+    const avgFocus = productivityAgg[0]?.avgFocus || 0;
+    const productivityScore = Math.round((avgFocus / 5) * 100);
+
+    // Previous Productivity for Trend
+    const prevProductivityAgg = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: previousStartDate, $lte: previousEndDate },
+          focusScore: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgFocus: { $avg: "$focusScore" },
+        },
+      },
+    ]);
+    const prevAvgFocus = prevProductivityAgg[0]?.avgFocus || 0;
+    const prevProductivityScore = Math.round((prevAvgFocus / 5) * 100);
+    const productivityScoreTrend = prevProductivityScore
+      ? (
+          ((productivityScore - prevProductivityScore) /
+            prevProductivityScore) *
+          100
+        ).toFixed(1)
+      : productivityScore > 0
+      ? "100.0"
+      : "0.0";
+
+    // 3. Efficiency Rate
+    const efficiencyAgg = await UserTask.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          "metadata.lastActivityAt": { $gte: startDate, $lte: endDate },
+          "productivityMetrics.completionEfficiency": { $gt: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgEfficiency: { $avg: "$productivityMetrics.completionEfficiency" },
+        },
+      },
+    ]);
+    const efficiencyRate = Math.round(efficiencyAgg[0]?.avgEfficiency || 0);
+
+    // Previous Efficiency for Trend
+    const prevEfficiencyAgg = await UserTask.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          "metadata.lastActivityAt": {
+            $gte: previousStartDate,
+            $lte: previousEndDate,
+          },
+          "productivityMetrics.completionEfficiency": { $gt: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgEfficiency: { $avg: "$productivityMetrics.completionEfficiency" },
+        },
+      },
+    ]);
+    const prevEfficiencyRate = Math.round(
+      prevEfficiencyAgg[0]?.avgEfficiency || 0
+    );
+    const efficiencyRateTrend = prevEfficiencyRate
+      ? (
+          ((efficiencyRate - prevEfficiencyRate) / prevEfficiencyRate) *
+          100
+        ).toFixed(1)
+      : efficiencyRate > 0
+      ? "100.0"
+      : "0.0";
+
+    // 4. Time Allocation by Category
+    const categoryAllocation = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $lookup: {
+          from: "usertasks",
+          localField: "taskId",
+          foreignField: "_id",
+          as: "task",
+        },
+      },
+      { $unwind: "$task" },
+      {
+        $group: {
+          _id: "$task.category",
+          totalMinutes: { $sum: "$durationInMinutes" },
+        },
+      },
+      { $sort: { totalMinutes: -1 } },
+    ]);
+
+    const allocationData = categoryAllocation.map((item) => ({
+      name: item._id.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+      value: item.totalMinutes,
+      color: categoryColors[item._id] || "#cccccc",
+    }));
+
+    const totalAllocationMinutes = allocationData.reduce(
+      (sum, item) => sum + item.value,
+      0
+    );
+    const allocationDataWithPercent = allocationData
+      .map((item) => ({
+        ...item,
+        value: totalAllocationMinutes
+          ? Math.round((item.value / totalAllocationMinutes) * 100)
+          : 0,
+        minutes: item.value,
+      }))
+      .filter((item) => item.value > 0);
+
+    // 5. Productivity Trend (Daily breakdown for current range)
+    const trendAgg = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$startTimestamp" },
+          },
+          avgFocus: { $avg: "$focusScore" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const trendData = trendAgg.map((item) => ({
+      date: new Date(item._id).toLocaleDateString("en-US", {
+        month: "numeric",
+        day: "numeric",
+      }),
+      productivity: Math.round((item.avgFocus / 5) * 100),
+      efficiency: Math.round(Math.random() * 20 + 70), // Placeholder
+    }));
+
+    // 6. Focus Trends (Dynamic based on Time Range)
+    const focusTrendsAgg = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: startDate, $lte: endDate },
+          focusScore: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$startTimestamp" },
+          },
+          avgFocus: { $avg: "$focusScore" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Days mapping
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    // Gap Filling Logic
+    const focusTrendsData = [];
+    const currentDate = new Date(startDate);
+    // Clone end date to safely loop
+    const rangeEnd = new Date(endDate);
+
+    // Safety break loop if infinite (shouldn't happen with valid dates)
+    while (currentDate <= rangeEnd) {
+      const dateStr = currentDate.toLocaleDateString("en-CA");
+      const found = focusTrendsAgg.find((f) => f._id === dateStr);
+
+      focusTrendsData.push({
+        day: `${days[currentDate.getDay()]} ${currentDate.getDate()}`,
+        focus: found ? Number(found.avgFocus.toFixed(1)) : 0,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // 7. Category Comparison
+    const prevCategoryAllocation = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: previousStartDate, $lte: previousEndDate },
+        },
+      },
+      {
+        $lookup: {
+          from: "usertasks",
+          localField: "taskId",
+          foreignField: "_id",
+          as: "task",
+        },
+      },
+      { $unwind: "$task" },
+      {
+        $group: {
+          _id: "$task.category",
+          totalMinutes: { $sum: "$durationInMinutes" },
+        },
+      },
+    ]);
+
+    const prevAllocationMap = new Map();
+    prevCategoryAllocation.forEach((item) => {
+      prevAllocationMap.set(item._id, item.totalMinutes);
+    });
+
+    const categoriesList = [
+      ...new Set([
+        ...categoryAllocation.map((i) => i._id),
+        ...prevCategoryAllocation.map((i) => i._id),
+      ]),
+    ];
+
+    const topCategories = categoriesList
+      .map((cat) => ({
+        id: cat,
+        current:
+          (categoryAllocation.find((i) => i._id === cat)?.totalMinutes || 0) /
+          60,
+        prev: (prevAllocationMap.get(cat) || 0) / 60,
+      }))
+      .sort((a, b) => b.current - a.current)
+      .slice(0, 6);
+
+    const comparisonData = topCategories.map((item) => ({
+      category: item.id
+        .replace("_", " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase()),
+      thisWeek: Number(item.current.toFixed(1)),
+      lastWeek: Number(item.prev.toFixed(1)),
+    }));
+
+    // 8. Detailed Breakdown
+    const detailedBreakdown = await TimeEntry.aggregate([
+      {
+        $match: {
+          userId: userIdObj,
+          startTimestamp: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $lookup: {
+          from: "usertasks",
+          localField: "taskId",
+          foreignField: "_id",
+          as: "task",
+        },
+      },
+      { $unwind: "$task" },
+      {
+        $group: {
+          _id: "$task.category",
+          totalMinutes: { $sum: "$durationInMinutes" },
+          sessions: { $sum: 1 },
+          avgDurationMin: { $avg: "$durationInMinutes" },
+        },
+      },
+      { $sort: { totalMinutes: -1 } },
+    ]);
+
+    const detailedData = detailedBreakdown.map((item) => ({
+      name: item._id.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+      color: categoryColors[item._id] || "#cccccc",
+      totalTime: Number((item.totalMinutes / 60).toFixed(1)),
+      sessions: item.sessions,
+      avgDuration: Number((item.avgDurationMin / 60).toFixed(2)),
+      percentage: totalAllocationMinutes
+        ? Math.round((item.totalMinutes / totalAllocationMinutes) * 100)
+        : 0,
+    }));
+
+    // Respond
+    res.status(200).json({
+      stats: {
+        totalHours,
+        productivityScore,
+        efficiencyRate,
+        totalTimeTrend,
+        productivityScoreTrend,
+        efficiencyRateTrend,
+        hasData: totalTimeAgg.length > 0,
+      },
+      timeAllocation: allocationDataWithPercent,
+      productivityTrend: trendData,
+      focusTrends: focusTrendsData, // New Data for FocusTrends component
+      categoryComparison: comparisonData,
+      detailedBreakdown: detailedData,
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({ message: "Server error fetching analytics" });
+  }
+};
