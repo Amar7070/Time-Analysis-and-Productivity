@@ -1,5 +1,5 @@
-import User from "../modal/User.js";
-import { deleteAvatar } from "../helper/cloudinaryDeleteAvatar.js";
+import User from "../models/User.js";
+import { deleteAvatar } from "../utils/cloudinaryDeleteAvatar.js";
 
 export const getProfileInfo = async (req, res) => {
   try {

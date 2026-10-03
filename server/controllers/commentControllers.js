@@ -1,5 +1,5 @@
-import Project from "../modal/Project.js";
-import Task from "../modal/Task.js";
+import Project from "../models/Project.js";
+import Task from "../models/Task.js";
 
 // Add comment to a subtask
 export const addComment = async (req, res) => {

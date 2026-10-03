@@ -1,5 +1,5 @@
-import Project from "../modal/Project.js";
-import User from "../modal/User.js";
+import Project from "../models/Project.js";
+import User from "../models/User.js";
 
 export const getProjectMembers = async (req, res) => {
   try {

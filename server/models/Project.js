@@ -23,8 +23,6 @@ const projectSchema = new mongoose.Schema(
     removedMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     invitedMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
-    tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "taskSchema" }],
-
     managingUserId: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -64,5 +62,10 @@ projectSchema.statics.getProjectName = async function (projectId) {
   const project = await this.findById(projectId);
   return project ? project.name : null;
 };
+
+// Indexes for optimized queries (getAllProjects heavily filters by these)
+projectSchema.index({ teamMembers: 1 });
+projectSchema.index({ managingUserId: 1 });
+projectSchema.index({ projectStartedBy: 1 });
 
 export default mongoose.model("Project", projectSchema);

@@ -1,4 +1,4 @@
-import DailyCheckIn from "../../modal/personalAnalysis/DailyCheckIn.js";
+import DailyCheckIn from "../../models/personalAnalysis/DailyCheckIn.js";
 
 /**
  * @desc    Create or update daily check-in

@@ -1,5 +1,5 @@
-import Task from "../modal/Task.js";
-import Project from "../modal/Project.js";
+import Task from "../models/Task.js";
+import Project from "../models/Project.js";
 
 // Create a new task full task
 export const createTask = async (req, res) => {
@@ -154,7 +154,6 @@ export const createTask = async (req, res) => {
     await task.save();
 
     // 9. Add task to project's tasks array
-    project.tasks.push(task._id);
     await project.save();
 
     // 10. Return success response
@@ -190,10 +189,7 @@ export const createTask = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating task:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Server error creating task",
-    });
+    next(error);
   }
 };
 
@@ -248,7 +244,6 @@ export const createQuickTask = async (req, res) => {
     await task.save();
 
     // Add to project
-    project.tasks.push(task._id);
     await project.save();
 
     res.status(201).json({
@@ -267,10 +262,7 @@ export const createQuickTask = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating quick task:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error creating task",
-    });
+    next(error);
   }
 };
 
@@ -361,10 +353,7 @@ export const getTasks = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching tasks:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error fetching tasks",
-    });
+    next(error);
   }
 };
 
@@ -522,10 +511,7 @@ export const updateTask = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating task:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error updating task",
-    });
+    next(error);
   }
 };
 
@@ -630,10 +616,7 @@ export const updateTaskStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating task status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error updating task status",
-    });
+    next(error);
   }
 };
 
@@ -684,7 +667,6 @@ export const deleteTask = async (req, res) => {
     await Task.findByIdAndDelete(taskId);
 
     // Remove task from project's tasks array
-    project.tasks = project.tasks.filter((t) => t.toString() !== taskId);
     await project.save();
 
     res.status(200).json({
@@ -699,9 +681,6 @@ export const deleteTask = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting task:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error deleting task",
-    });
+    next(error);
   }
 };

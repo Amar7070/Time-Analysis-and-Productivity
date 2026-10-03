@@ -1,6 +1,6 @@
-import UserTask from "../../modal/personalAnalysis/UserTask.js";
-import TimeEntry from "../../modal/personalAnalysis/TimeEntry.js";
-import ProductivityGoal from "../../modal/personalAnalysis/ProductivityGoal.js";
+import UserTask from "../../models/personalAnalysis/UserTask.js";
+import TimeEntry from "../../models/personalAnalysis/TimeEntry.js";
+import ProductivityGoal from "../../models/personalAnalysis/ProductivityGoal.js";
 import mongoose from "mongoose";
 
 export const getDashboardStats = async (req, res) => {

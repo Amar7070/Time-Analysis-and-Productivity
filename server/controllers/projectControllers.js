@@ -1,6 +1,6 @@
-import Task from "../modal/Task.js";
-import Project from "../modal/Project.js";
-import User from "../modal/User.js";
+import Task from "../models/Task.js";
+import Project from "../models/Project.js";
+import User from "../models/User.js";
 export const addProject = async (req, res) => {
   try {
     const creatorId = req.user.id; // from JWT

@@ -1,4 +1,4 @@
-import UserTask from "../../modal/personalAnalysis/UserTask.js";
+import UserTask from "../../models/personalAnalysis/UserTask.js";
 
 /**
  * @desc    Create a new user task
@@ -555,6 +555,8 @@ export const getTaskAnalytics = async (req, res) => {
  * @route   DELETE /api/v1/user-tasks/:taskId
  * @access  Private
  */
+import TimeEntry from "../../models/personalAnalysis/TimeEntry.js";
+
 export const deleteUserTask = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -572,6 +574,9 @@ export const deleteUserTask = async (req, res) => {
         message: "Task not found",
       });
     }
+
+    // CASCADE DELETE: Clean up orphaned time entries
+    await TimeEntry.deleteMany({ taskId: taskId });
 
     res.json({
       success: true,

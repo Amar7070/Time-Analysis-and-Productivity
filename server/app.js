@@ -23,7 +23,9 @@ import personalDashboardRoutes from "./routes/personalAnalysis/personalDashboard
 
 const app = express();
 
-connectDB();
+if (process.env.NODE_ENV !== "test") {
+  connectDB();
+}
 
 app.use(
   cors({
@@ -55,6 +57,11 @@ app.use("/api/user-tasks", userTaskRoutes);
 app.use("/api/time-entries", timeEntryRoutes);
 app.use("/api/daily-check-in", dailyCheckInRoutes);
 app.use("/api/personal-analysis", personalDashboardRoutes);
+
+import errorHandler from "./middleware/errorHandler.js";
+
+// Error handling middleware should be the last app.use()
+app.use(errorHandler);
 
 if (process.env.NODE_ENV === "development") {
   const PORT = process.env.PORT || 5000;

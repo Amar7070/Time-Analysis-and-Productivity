@@ -536,7 +536,6 @@ UserTaskSchema.index({ userId: 1, category: 1 });
 UserTaskSchema.index({ userId: 1, priorityLevel: 1 });
 UserTaskSchema.index({ userId: 1, createdAt: -1 });
 UserTaskSchema.index({ userId: 1, "metadata.lastActivityAt": -1 });
-UserTaskSchema.index({ userId: 1, isOverdue: 1 });
 UserTaskSchema.index({ userId: 1, plannedStartDate: 1 });
 UserTaskSchema.index({
   userId: 1,

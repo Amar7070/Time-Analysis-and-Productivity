@@ -578,4 +578,9 @@ taskSchema.methods.addReaction = function (
   throw new Error("Comment not found");
 };
 
+// Indexes for optimized queries
+taskSchema.index({ projectId: 1, order: 1 }); // Used for loading project tasks
+taskSchema.index({ assignedTo: 1 }); // Used for loading user tasks
+taskSchema.index({ "subtasks.assignedTo": 1 }); // Used for loading user subtasks
+
 export default mongoose.model("Task", taskSchema);

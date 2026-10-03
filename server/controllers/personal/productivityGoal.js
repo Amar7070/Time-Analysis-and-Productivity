@@ -1,4 +1,4 @@
-import ProductivityGoal from "../../modal/personalAnalysis/ProductivityGoal.js";
+import ProductivityGoal from "../../models/personalAnalysis/ProductivityGoal.js";
 
 /**
  * @desc    Create a new productivity goal

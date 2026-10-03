@@ -1,5 +1,5 @@
-import TimeEntry from "../../modal/personalAnalysis/TimeEntry.js";
-import userTask from "../../modal/personalAnalysis/UserTask.js";
+import TimeEntry from "../../models/personalAnalysis/TimeEntry.js";
+import userTask from "../../models/personalAnalysis/UserTask.js";
 /**
  * @desc    Create a new time entry
  * @route   POST /api/v1/time-entries
@@ -19,7 +19,28 @@ export const createTimeEntry = async (req, res) => {
       additionalNotes = "",
     } = req.body;
 
-    // ... (skipping unchanged lines)
+    // Check for existing active time entry
+    if (!endTimestamp) {
+      const activeEntry = await TimeEntry.findOne({ userId, entryStatus: "active" });
+      if (activeEntry) {
+        return res.status(400).json({
+          success: false,
+          error: "Conflict",
+          message: "You already have an active time entry",
+          data: { activeEntryId: activeEntry._id },
+        });
+      }
+    }
+
+    // Verify task exists and belongs to user
+    const task = await userTask.findOne({ _id: taskId, userId });
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: "Not Found",
+        message: "Task not found",
+      });
+    }
 
     // Create time entry
     const timeEntry = new TimeEntry({
@@ -173,6 +194,17 @@ export const stopTimeEntry = async (req, res) => {
 
     // Calculate net productive time
     const netProductiveTime = updatedEntry.getNetProductiveTime();
+
+    // CRITICAL BUG FIX: Update the associated UserTask's total time spent!
+    if (updatedEntry.taskId) {
+      const task = await userTask.findById(updatedEntry.taskId);
+      if (task) {
+        await task.updateProgress({
+          timeSpentInMinutes: updatedEntry.durationInMinutes,
+          focusScore: updatedEntry.focusScore,
+        });
+      }
+    }
 
     res.json({
       success: true,
